@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Macro Panel</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .titlebar {
+      height: 32px;
+      background: #181825;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 0 12px;
+      -webkit-app-region: drag;
+    }
+    
+    .window-controls {
+      display: flex;
+      gap: 8px;
+      -webkit-app-region: no-drag;
+    }
+    
+    .control-btn {
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: #cdd6f4;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    
+    .control-btn:hover {
+      background: #313244;
+    }
+    
+    .control-btn.close:hover {
+      background: #f38ba8;
+      color: #1e1e2e;
+    }
+    
+    .content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    
+    .section {
+      background: #282838;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      border: 1px solid #313244;
+    }
+    
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #89b4fa;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #1e1e2e;
+      border-radius: 8px;
+      border: 1px solid #313244;
+    }
+    
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #a6e3a1;
+      transition: background 0.3s;
+    }
+    
+    .status-dot.recording {
+      background: #f38ba8;
+      animation: pulse 1s infinite;
+    }
+    
+    .status-dot.playing {
+      background: #fab387;
+      animation: pulse 0.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    
+    .status-text {
+      flex: 1;
+      font-size: 13px;
+    }
+    
+    .status-label {
+      font-weight: 600;
+      color: #cdd6f4;
+    }
+    
+    .status-value {
+      color: #a6adc8;
+      font-family: monospace;
+      overflow-wrap: anywhere;
+    }
+    
+    .hotkeys {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    
+    .hotkey {
+      background: #1e1e2e;
+      border: 1px solid #313244;
+      border-radius: 8px;
+      padding: 16px 12px;
+      text-align: center;
+      transition: border-color 0.2s, transform 0.1s;
+      color: #cdd6f4;
+      font: inherit;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .hotkey:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .hotkey.active {
+      border-color: #f38ba8;
+      transform: scale(0.98);
+    }
+    
+    .hotkey.playing {
+      border-color: #fab387;
+    }
+    
+    .hotkey-key {
+      font-size: 20px;
+      font-weight: 700;
+      color: #89b4fa;
+      font-family: monospace;
+    }
+    
+    .hotkey-label {
+      font-size: 11px;
+      color: #a6adc8;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .repeat-control {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .repeat-label {
+      font-size: 13px;
+      color: #a6adc8;
+      white-space: nowrap;
+    }
+    
+    .repeat-input {
+      flex: 1;
+      max-width: 100px;
+      padding: 10px 12px;
+      background: #1e1e2e;
+      border: 1px solid #313244;
+      border-radius: 8px;
+      color: #cdd6f4;
+      font-size: 16px;
+      font-family: monospace;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    .repeat-input:focus {
+      border-color: #89b4fa;
+    }
+    
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      flex: 1;
+      min-width: 100px;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .btn-primary {
+      background: #89b4fa;
+      color: #1e1e2e;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      background: #74c7ec;
+    }
+    
+    .btn-danger {
+      background: #f38ba8;
+      color: #1e1e2e;
+    }
+    
+    .btn-danger:hover:not(:disabled) {
+      background: #eba0ac;
+    }
+    
+    .btn-secondary {
+      background: #313244;
+      color: #cdd6f4;
+      border: 1px solid #45475a;
+    }
+    
+    .btn-secondary:hover:not(:disabled) {
+      background: #45475a;
+    }
+    
+    .events-list {
+      max-height: 200px;
+      overflow-y: auto;
+      background: #1e1e2e;
+      border-radius: 8px;
+      border: 1px solid #313244;
+    }
+    
+    .event-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #313244;
+      font-size: 12px;
+    }
+    
+    .event-item:last-child {
+      border-bottom: none;
+    }
+    
+    .event-type {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    
+    .event-type.move {
+      background: #89b4fa;
+      color: #1e1e2e;
+    }
+    
+    .event-type.click {
+      background: #f38ba8;
+      color: #1e1e2e;
+    }
+    
+    .event-details {
+      flex: 1;
+      color: #a6adc8;
+      font-family: monospace;
+    }
+    
+    .event-time {
+      color: #6c7086;
+      font-size: 11px;
+    }
+    
+    .empty-state {
+      padding: 20px;
+      text-align: center;
+      color: #6c7086;
+      font-size: 13px;
+    }
+    
+    .playback-progress {
+      height: 6px;
+      background: #1e1e2e;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    
+    .playback-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #fab387, #f9e2af);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .auto-description {
+      color: #a6adc8;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+
+    .auto-fields {
+      display: flex;
+      margin-bottom: 14px;
+    }
+
+    .auto-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      color: #a6adc8;
+      font-size: 11px;
+    }
+
+    .auto-input {
+      width: 100%;
+      min-width: 0;
+      padding: 9px 8px;
+      border: 1px solid #45475a;
+      border-radius: 6px;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      font-size: 14px;
+      font-family: monospace;
+    }
+
+    .auto-input:focus {
+      outline: none;
+      border-color: #89b4fa;
+    }
+
+    .call-state {
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      background: #1e1e2e;
+      border: 1px solid #313244;
+      color: #a6adc8;
+      font-size: 12px;
+    }
+
+    .call-state.calling {
+      border-color: #fab387;
+      color: #fab387;
+    }
+
+    .call-state.disposition {
+      border-color: #f9e2af;
+      color: #f9e2af;
+    }
+
+    .voice-phrases {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .voice-phrase {
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid #45475a;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      font-size: 11px;
+    }
+
+    .mic-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .mic-select {
+      width: 100%;
+      min-width: 0;
+      padding: 9px;
+      border: 1px solid #45475a;
+      border-radius: 6px;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      font-size: 12px;
+    }
+
+    .mic-meter {
+      height: 6px;
+      margin-top: 8px;
+      overflow: hidden;
+      border-radius: 3px;
+      background: #1e1e2e;
+    }
+
+    .mic-meter-level {
+      height: 100%;
+      width: 0%;
+      background: #a6e3a1;
+      transition: width 0.1s;
+    }
+
+    .loop-settings {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .loop-settings .auto-input {
+      max-width: 150px;
+    }
+
+    .loop-settings .auto-field {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="titlebar">
+    <div class="window-controls">
+      <button class="control-btn minimize" onclick="window.api.minimize()">−</button>
+      <button class="control-btn close" onclick="window.api.close()">×</button>
+    </div>
+  </div>
+  
+  <div class="content">
+    <div class="section">
+      <div class="section-title">Estado</div>
+      <div class="status-indicator">
+        <div id="statusDot" class="status-dot"></div>
+        <div class="status-text">
+          <div class="status-label" id="statusLabel">Listo</div>
+          <div class="status-value" id="statusValue">F5: Grabar • F6: Parar • F7: Reproducir</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Controles Rápidos</div>
+      <div class="hotkeys" style="grid-template-columns: repeat(4, 1fr);">
+        <button class="hotkey" id="hkRecord" onclick="startRecording()">
+          <div class="hotkey-key">F5</div>
+          <div class="hotkey-label">Grabar</div>
+        </button>
+        <button class="hotkey" id="hkStop" onclick="stopRecording()">
+          <div class="hotkey-key">F6</div>
+          <div class="hotkey-label">Parar Rec</div>
+        </button>
+        <button class="hotkey" id="hkPlay" onclick="playMacro()">
+          <div class="hotkey-key">F7</div>
+          <div class="hotkey-label">Reproducir</div>
+        </button>
+        <button class="hotkey" id="hkStopPlay" onclick="stopPlayback()">
+          <div class="hotkey-key">F8</div>
+          <div class="hotkey-label">Parar Play</div>
+        </button>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Repeticiones</div>
+      <div class="repeat-control">
+        <span class="repeat-label">Veces a repetir:</span>
+        <input type="number" class="repeat-input" id="repeatCount" value="1" min="1" max="9999">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Marcación automática</div>
+      <p class="auto-description">
+        Marca la zona del botón «Llamar» con un clic en pantalla. El selector cubre la pantalla
+        para que ese clic no active el botón. Durante cada llamada, el micrófono escucha las frases;
+        no se iniciará otra hasta reconocer una.
+      </p>
+      <div class="auto-fields">
+        <label class="auto-field">
+          Segundos entre llamadas
+          <input class="auto-input" id="callInterval" type="number" value="3" min="1" max="3600" step="1">
+        </label>
+      </div>
+      <div id="callLocationStatus" class="call-state">Zona de llamada: sin marcar</div>
+      <div id="callState" class="call-state">Estado de llamada: LIBRE</div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" id="btnMarkLocation" onclick="markCallLocation()">Marcar zona</button>
+        <button class="btn btn-primary" id="btnStartAuto" onclick="startAutoCalls()">Iniciar llamadas</button>
+        <button class="btn btn-danger" id="btnPauseAuto" onclick="pauseCallLoop()" disabled>Pausar</button>
+        <button class="btn btn-secondary" id="btnResumeAuto" onclick="resumeCallLoop()" disabled>Continuar</button>
+        <button class="btn btn-secondary" id="btnRestartAuto" onclick="restartCallLoop()" disabled>Reiniciar</button>
+        <button class="btn btn-secondary" id="btnStopAuto" onclick="stopAutoCalls()" disabled>Finalizar</button>
+      </div>
+      <div class="loop-settings">
+        <label class="auto-field" for="pauseHotkey">Atajo para pausar</label>
+        <select class="mic-select auto-input" id="pauseHotkey">
+          <option value="F9">F9</option>
+          <option value="F10">F10</option>
+          <option value="F11">F11</option>
+          <option value="F12">F12</option>
+          <option value="Control+Shift+F9">Ctrl+Shift+F9</option>
+          <option value="Control+Shift+F10">Ctrl+Shift+F10</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Micrófono del headset</div>
+      <p class="auto-description">
+        Al abrir la app se solicita permiso para el headset. Selecciona la entrada y pruébala antes de iniciar.
+        Las frases se reconocen localmente en este equipo; no se envía el audio a un servicio en línea.
+        F12 o Ctrl+Shift+I abre la consola de la interfaz; Ctrl+Shift+V abre la consola aislada de voz.
+      </p>
+      <div class="mic-controls">
+        <select class="mic-select" id="microphoneSelect" aria-label="Micrófono para reconocimiento">
+          <option value="">Detectando micrófonos...</option>
+        </select>
+        <button class="btn btn-secondary" id="btnRefreshMics" onclick="loadMicrophones(true)">Actualizar</button>
+      </div>
+      <div id="microphoneStatus" class="call-state">Micrófono sin probar</div>
+      <div class="mic-meter"><div id="micMeterLevel" class="mic-meter-level"></div></div>
+      <div class="btn-group" style="margin-top: 10px;">
+        <button class="btn btn-secondary" id="btnTestMic" onclick="testMicrophone()">Probar micrófono</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Frases exactas reconocidas por voz</div>
+      <p class="auto-description">
+        El reconocedor en español compara el transcript con estas frases exactas. Solo una coincidencia
+        libera la siguiente llamada; no se hace clic en botones de clasificación.
+      </p>
+      <div id="voicePhrases" class="voice-phrases"></div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Acciones</div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="btnPlay" onclick="playMacro()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          Reproducir
+        </button>
+        <button class="btn btn-secondary" id="btnClear" onclick="clearMacro()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Limpiar
+        </button>
+        <button class="btn btn-secondary" id="btnSave" onclick="saveMacro()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Guardar
+        </button>
+        <button class="btn btn-secondary" id="btnLoad" onclick="loadMacro()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Cargar
+        </button>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Eventos grabados (<span id="eventCount">0</span>)</div>
+      <div class="events-list" id="eventsList">
+        <div class="empty-state">No hay eventos grabados. Presiona F5 para empezar.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isRecording = false;
+    let isPlaying = false;
+    let currentEvents = [];
+    let displayedEventCount = 0;
+    let currentError = '';
+    let errorTimeout = null;
+    let playbackCurrent = 0;
+    let playbackTotal = 0;
+    let callState = 'IDLE';
+    let autoCallsEnabled = false;
+    let callLoopPaused = false;
+    let autoCallTimer = null;
+    let voiceRecognitionActive = false;
+    let activeMicrophoneLabel = '';
+    let microphoneTestStream = null;
+    let microphoneTestContext = null;
+    let microphoneTestFrame = null;
+    let callLocation = null;
+    let isSelectingCallLocation = false;
+    let isRestartingCallLoop = false;
+    let autoMessage = '';
+    let callStartedAt = 0;
+    let callCycleGeneration = 0;
+    const repeatCountInput = document.getElementById('repeatCount');
+    const callIntervalInput = document.getElementById('callInterval');
+    const microphoneSelect = document.getElementById('microphoneSelect');
+    const pauseHotkeySelect = document.getElementById('pauseHotkey');
+    window.addEventListener('error', (event) => {
+      console.error('Error en la interfaz:', event.error || event.message);
+      currentError = `Error en la interfaz: ${event.message || 'error inesperado'}`;
+      updateStatus();
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('Error asíncrono en la interfaz:', event.reason);
+      currentError = `Error asíncrono: ${event.reason?.message || String(event.reason)}`;
+      updateStatus();
+    });
+    const dispositionPhrases = [
+      'no contesto',
+      'cliente baneable',
+      'cliente furioso',
+      'buzon de voz',
+      'numero equivocado',
+      'volver a llamar',
+      'interesado',
+      'no interesado',
+      'agenda cita',
+      'colgo llamada',
+      'idioma extranjero',
+      'lista negra'
+    ];
+    function normalizeVoiceText(text) {
+      return text
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('es-MX')
+        .trim()
+        .replace(/\s+/g, ' ');
+    }
+
+    function logCallDiagnostic(stage, details = '') {
+      window.api.logDiagnostic(stage, details);
+    }
+
+    function createVoicePhraseList() {
+      const list = document.getElementById('voicePhrases');
+      for (const phrase of dispositionPhrases) {
+        const item = document.createElement('span');
+        item.className = 'voice-phrase';
+        item.textContent = phrase;
+        list.append(item);
+      }
+    }
+
+    function setCallState(nextState) {
+      callState = nextState;
+      window.api.setCallAutomationActive(
+        autoCallsEnabled || callLoopPaused || isSelectingCallLocation || nextState !== 'IDLE'
+      );
+      const stateElement = document.getElementById('callState');
+      const labels = {
+        IDLE: 'Estado de llamada: LIBRE',
+        CALLING: 'Estado de llamada: LLAMANDO — esperando clasificación',
+        DISPOSITION: 'Estado de llamada: CLASIFICANDO'
+      };
+
+      stateElement.textContent = autoMessage || (
+        callLoopPaused ? `${labels[nextState]} — CICLO PAUSADO` : labels[nextState]
+      );
+      stateElement.className = `call-state ${nextState.toLowerCase()}`;
+      updateStatus();
+      updateHotkeys();
+    }
+
+    function setMicrophoneStatus(message, isError = false) {
+      const status = document.getElementById('microphoneStatus');
+      status.textContent = message;
+      status.className = `call-state${isError ? ' calling' : ''}`;
+    }
+
+    function activeMicrophoneName() {
+      return activeMicrophoneLabel
+        || microphoneSelect.selectedOptions[0]?.textContent
+        || 'headset seleccionado';
+    }
+
+    function microphoneErrorMessage(error) {
+      const messages = {
+        NotAllowedError: 'Windows o Macro Panel no tiene permiso para usar el micrófono. Pulsa Actualizar y permite el acceso.',
+        NotFoundError: 'No se encontró una entrada de micrófono. Conecta el headset y vuelve a actualizar.',
+        OverconstrainedError: 'La entrada seleccionada ya no está disponible. Actualiza la lista y vuelve a elegir el headset.',
+        NotReadableError: 'Windows no pudo abrir el micrófono. Puede estar ocupado por otra aplicación o bloqueado por la privacidad de Windows.',
+        AbortError: 'Windows interrumpió la apertura del micrófono. Vuelve a intentarlo.'
+      };
+      return messages[error?.name] || error?.message || 'Error desconocido al abrir el micrófono.';
+    }
+
+    async function ensureMicrophoneAccess() {
+      const allowed = await window.api.requestMicrophoneAccess();
+      if (!allowed) {
+        throw new Error('Se necesita permiso para usar el micrófono del headset.');
+      }
+    }
+
+    async function loadMicrophones(requestPermission = false) {
+      const previousDeviceId = microphoneSelect.value;
+      let permissionStream;
+      try {
+        if (requestPermission) await ensureMicrophoneAccess();
+        permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        permissionStream.getTracks().forEach((track) => track.stop());
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const microphones = devices.filter((device) => device.kind === 'audioinput');
+        microphoneSelect.replaceChildren();
+
+        if (microphones.length === 0) {
+          throw new Error('Windows no reporta entradas de micrófono disponibles.');
+        }
+
+        for (const [index, device] of microphones.entries()) {
+          const option = document.createElement('option');
+          option.value = device.deviceId;
+          option.textContent = device.label || `Micrófono ${index + 1}`;
+          microphoneSelect.append(option);
+        }
+
+        if (microphones.some((device) => device.deviceId === previousDeviceId)) {
+          microphoneSelect.value = previousDeviceId;
+        }
+        setMicrophoneStatus(`${microphoneSelect.selectedOptions[0].textContent} detectado. Pruébalo antes de iniciar.`);
+      } catch (error) {
+        permissionStream?.getTracks().forEach((track) => track.stop());
+        setMicrophoneStatus(`No se pudieron cargar los micrófonos: ${microphoneErrorMessage(error)}`, true);
+      }
+    }
+
+    function stopMicrophoneTest() {
+      if (microphoneTestFrame !== null) cancelAnimationFrame(microphoneTestFrame);
+      microphoneTestFrame = null;
+      microphoneTestStream?.getTracks().forEach((track) => track.stop());
+      microphoneTestStream = null;
+      if (microphoneTestContext) void microphoneTestContext.close();
+      microphoneTestContext = null;
+      document.getElementById('micMeterLevel').style.width = '0%';
+      document.getElementById('btnTestMic').textContent = 'Probar micrófono';
+    }
+
+    async function testMicrophone() {
+      if (microphoneTestStream) {
+        stopMicrophoneTest();
+        setMicrophoneStatus('Prueba de micrófono detenida.');
+        return;
+      }
+
+      if (!microphoneSelect.value) {
+        setMicrophoneStatus('Selecciona primero el micrófono del headset.', true);
+        return;
+      }
+
+      try {
+        await ensureMicrophoneAccess();
+        microphoneTestStream = await navigator.mediaDevices.getUserMedia({
+          audio: { deviceId: { exact: microphoneSelect.value } }
+        });
+        microphoneTestContext = new AudioContext();
+        const source = microphoneTestContext.createMediaStreamSource(microphoneTestStream);
+        const analyser = microphoneTestContext.createAnalyser();
+        const mutedOutput = microphoneTestContext.createGain();
+        analyser.fftSize = 512;
+        mutedOutput.gain.value = 0;
+        source.connect(analyser);
+        analyser.connect(mutedOutput);
+        mutedOutput.connect(microphoneTestContext.destination);
+        const samples = new Uint8Array(analyser.fftSize);
+        document.getElementById('btnTestMic').textContent = 'Detener prueba';
+        setMicrophoneStatus(`Probando: ${microphoneSelect.selectedOptions[0].textContent}. Habla y observa el medidor.`);
+
+        const updateMeter = () => {
+          analyser.getByteTimeDomainData(samples);
+          let energy = 0;
+          for (const sample of samples) {
+            const normalized = (sample - 128) / 128;
+            energy += normalized * normalized;
+          }
+          const rms = Math.sqrt(energy / samples.length);
+          document.getElementById('micMeterLevel').style.width = `${Math.min(100, Math.round(rms * 350))}%`;
+          microphoneTestFrame = requestAnimationFrame(updateMeter);
+        };
+        updateMeter();
+      } catch (error) {
+        stopMicrophoneTest();
+        setMicrophoneStatus(`No se pudo abrir el micrófono seleccionado: ${microphoneErrorMessage(error)}`, true);
+      }
+    }
+
+    function updateCallLocationStatus(message) {
+      const status = document.getElementById('callLocationStatus');
+      status.textContent = message || (callLocation
+        ? `Zona marcada: X ${callLocation.x}, Y ${callLocation.y}`
+        : 'Zona de llamada: sin marcar');
+    }
+
+    async function markCallLocation() {
+      if (autoCallsEnabled || isRecording || isPlaying || isSelectingCallLocation) return;
+
+      isSelectingCallLocation = true;
+      updateCallLocationStatus('Seleccionando: haz clic en el botón «Llamar»; Escape cancela.');
+      updateHotkeys();
+
+      try {
+        const point = await window.api.selectCallLocation();
+        if (!Number.isInteger(point.x) || !Number.isInteger(point.y)) {
+          throw new Error('No se recibieron coordenadas válidas para la zona.');
+        }
+        callLocation = point;
+        updateCallLocationStatus();
+      } catch (error) {
+        updateCallLocationStatus(error.message === 'Se canceló la selección de la zona.'
+          ? 'Selección cancelada.'
+          : `No se pudo marcar la zona: ${error.message || error}`);
+      } finally {
+        isSelectingCallLocation = false;
+        updateHotkeys();
+      }
+    }
+
+    function scheduleNextCall(delay) {
+      if (!autoCallsEnabled) return;
+      clearTimeout(autoCallTimer);
+      autoCallTimer = setTimeout(runAutoCall, delay);
+    }
+
+    async function runAutoCall() {
+      if (!autoCallsEnabled || !callLocation || callState !== 'IDLE' || isRecording || isPlaying) return;
+
+      setCallState('CALLING');
+      callStartedAt = Date.now();
+      scheduleNextCall(Number(callIntervalInput.value) * 1000);
+      try {
+        await window.api.clickAtCoordinates(callLocation.x, callLocation.y);
+      } catch (error) {
+        autoMessage = `No se pudo hacer clic en Llamar: ${error.message || error}`;
+        autoCallsEnabled = false;
+        callLoopPaused = true;
+        clearTimeout(autoCallTimer);
+        stopSpeechRecognition();
+        setCallState('IDLE');
+      }
+    }
+
+    async function startSpeechRecognition() {
+      logCallDiagnostic('Speech recognition requested');
+      if (!microphoneSelect.value) {
+        throw new Error('Selecciona el micrófono del headset y pruébalo primero.');
+      }
+
+      autoMessage = '';
+      stopMicrophoneTest();
+      const selectedDeviceName = microphoneSelect.selectedOptions[0]?.textContent || 'headset seleccionado';
+      activeMicrophoneLabel = selectedDeviceName;
+      setMicrophoneStatus(`Iniciando el motor de voz aislado para: ${selectedDeviceName}...`);
+      await ensureMicrophoneAccess();
+      try {
+        await window.api.startVoiceRecognition(microphoneSelect.value);
+      } catch (error) {
+        stopSpeechRecognition();
+        throw new Error(error.message || String(error));
+      }
+      voiceRecognitionActive = true;
+    }
+
+    function stopSpeechRecognition() {
+      voiceRecognitionActive = false;
+      activeMicrophoneLabel = '';
+      window.api.stopVoiceRecognition();
+    }
+
+    async function classifyCallByVoice(phrase) {
+      if (callState !== 'CALLING') return;
+
+      const generation = ++callCycleGeneration;
+      autoMessage = `Clasificación por voz: «${phrase}»`;
+      setCallState('DISPOSITION');
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      if (generation !== callCycleGeneration) return;
+      autoMessage = autoCallsEnabled
+        ? `«${phrase}» reconocida. Próxima llamada en ${callIntervalInput.value} s.`
+        : 'Llamada clasificada; la marcación está detenida.';
+      setCallState('IDLE');
+
+      if (!autoCallsEnabled) {
+        autoMessage = `«${phrase}» reconocida. El ciclo está finalizado.`;
+        setCallState('IDLE');
+        stopSpeechRecognition();
+      } else if (callLoopPaused) {
+        autoMessage = 'Llamada clasificada. El ciclo está pausado; pulsa Continuar.';
+        setCallState('IDLE');
+      } else {
+        const intervalMs = Number(callIntervalInput.value) * 1000;
+        scheduleNextCall(Math.max(0, callStartedAt + intervalMs - Date.now()));
+      }
+    }
+
+    async function startAutoCalls() {
+      try {
+        const interval = Number(callIntervalInput.value);
+        if (!Number.isInteger(interval) || interval < 1 || interval > 3600) {
+          throw new Error('El intervalo debe ser un número entero entre 1 y 3600 segundos.');
+        }
+        if (!callLocation) {
+          throw new Error('Primero marca la zona del botón «Llamar».');
+        }
+        if (isRecording || isPlaying || isSelectingCallLocation) {
+          throw new Error('Detén la grabación o reproducción antes de iniciar llamadas.');
+        }
+
+        autoMessage = '';
+        callLoopPaused = false;
+        autoCallsEnabled = true;
+        logCallDiagnostic('Automatic call loop enabled');
+        updateHotkeys();
+        await startSpeechRecognition();
+        setMicrophoneStatus(`Escuchando por: ${activeMicrophoneName()}`);
+        await runAutoCall();
+        setCallState(callState);
+      } catch (error) {
+        autoCallsEnabled = false;
+        callLoopPaused = true;
+        clearTimeout(autoCallTimer);
+        stopSpeechRecognition();
+        autoMessage = error.message || String(error);
+        setMicrophoneStatus(autoMessage, true);
+        setCallState(callState);
+      }
+    }
+
+    function stopAutoCalls() {
+      autoCallsEnabled = false;
+      callLoopPaused = false;
+      clearTimeout(autoCallTimer);
+      autoMessage = callState === 'CALLING'
+        ? 'Ciclo finalizado; el micrófono seguirá escuchando esta llamada hasta reconocer una frase.'
+        : '';
+      if (callState !== 'CALLING') stopSpeechRecognition();
+      setCallState(callState);
+      updateHotkeys();
+    }
+
+    function pauseCallLoop() {
+      if (!autoCallsEnabled || callLoopPaused) return;
+      callLoopPaused = true;
+      clearTimeout(autoCallTimer);
+      autoMessage = callState === 'CALLING'
+        ? 'Ciclo pausado; la llamada actual sigue escuchándose.'
+        : 'Ciclo pausado. Pulsa Continuar para iniciar otra llamada.';
+      if (callState === 'IDLE') stopSpeechRecognition();
+      setCallState(callState);
+      updateHotkeys();
+    }
+
+    async function resumeCallLoop() {
+      if (!callLoopPaused || !callLocation || isRecording || isPlaying) return;
+      autoMessage = '';
+      callLoopPaused = false;
+      autoCallsEnabled = true;
+      try {
+        if (!voiceRecognitionActive) {
+          await startSpeechRecognition();
+          setMicrophoneStatus(`Escuchando por: ${activeMicrophoneName()}`);
+        }
+        if (callState === 'IDLE') await runAutoCall();
+        else setCallState(callState);
+      } catch (error) {
+        autoCallsEnabled = false;
+        callLoopPaused = true;
+        autoMessage = `No se pudo reanudar: ${error.message || error}`;
+        setCallState(callState);
+      }
+    }
+
+    async function restartCallLoop() {
+      if (!callLocation || isRecording || isPlaying || isSelectingCallLocation || isRestartingCallLoop) return;
+      if (callState === 'CALLING'
+        && !window.confirm('La llamada actual todavía no se clasificó. ¿Reiniciar de todos modos y marcar otra vez?')) {
+        return;
+      }
+
+      isRestartingCallLoop = true;
+      callCycleGeneration++;
+      clearTimeout(autoCallTimer);
+      stopSpeechRecognition();
+      callLoopPaused = false;
+      autoCallsEnabled = true;
+      autoMessage = 'Reiniciando escucha y llamada...';
+      setCallState('IDLE');
+      updateHotkeys();
+
+      try {
+        await startSpeechRecognition();
+        setMicrophoneStatus(`Escuchando por: ${activeMicrophoneName()}`);
+        autoMessage = '';
+        await runAutoCall();
+      } catch (error) {
+        autoCallsEnabled = false;
+        callLoopPaused = true;
+        autoMessage = `No se pudo reiniciar: ${error.message || error}`;
+        setCallState('IDLE');
+      } finally {
+        isRestartingCallLoop = false;
+        updateHotkeys();
+      }
+    }
+
+    callIntervalInput.addEventListener('change', () => {
+      const interval = Number(callIntervalInput.value);
+      if (!Number.isInteger(interval) || interval < 1 || interval > 3600) {
+        callIntervalInput.value = '3';
+        autoMessage = 'El intervalo debe estar entre 1 y 3600 segundos.';
+        document.getElementById('callState').textContent = autoMessage;
+      } else if (autoCallsEnabled && callState === 'IDLE') {
+        if (!callLoopPaused) {
+          scheduleNextCall(Math.max(0, callStartedAt + interval * 1000 - Date.now()));
+        }
+      }
+    });
+
+    pauseHotkeySelect.addEventListener('change', () => {
+      localStorage.setItem('callPauseHotkey', pauseHotkeySelect.value);
+      window.api.setCallPauseHotkey(pauseHotkeySelect.value);
+    });
+
+    microphoneSelect.addEventListener('change', () => {
+      stopMicrophoneTest();
+      setMicrophoneStatus(microphoneSelect.value
+        ? `${microphoneSelect.selectedOptions[0].textContent} seleccionado. Pruébalo antes de iniciar.`
+        : 'Selecciona una entrada de micrófono.');
+    });
+
+    function syncRepeatCount() {
+      const count = Number.parseInt(repeatCountInput.value, 10);
+      if (Number.isInteger(count) && count >= 1 && count <= 9999) {
+        window.api.setRepeatCount(count);
+      }
+    }
+    
+    window.api.onRecordingStatus((data) => {
+      isRecording = data.recording;
+      displayedEventCount = data.eventCount;
+      updateStatus();
+      updateEventCount(data.eventCount);
+      updateHotkeys();
+    });
+    
+    window.api.onPlaybackStatus((data) => {
+      isPlaying = data.playing;
+      playbackCurrent = data.current;
+      playbackTotal = data.total;
+      updateStatus();
+      updateHotkeys();
+      updatePlaybackProgress(data.current, data.total);
+    });
+    
+    window.api.onMacroRecorded((data) => {
+      currentEvents = data.events || [];
+      renderEvents();
+      updateEventCount(currentEvents.length);
+      displayedEventCount = currentEvents.length;
+      updateStatus();
+      updateHotkeys();
+    });
+
+    window.api.onError((data) => {
+      currentError = data.message || 'Ocurrió un error inesperado.';
+      updateStatus();
+      clearTimeout(errorTimeout);
+      errorTimeout = setTimeout(() => {
+        currentError = '';
+        updateStatus();
+      }, 6000);
+    });
+
+    window.api.onCallPauseHotkey(() => pauseCallLoop());
+    window.api.onVoiceRecognitionEvent((event) => {
+      if (event.type === 'status') {
+        setMicrophoneStatus(event.message);
+      } else if (event.type === 'partial' && event.text) {
+        setMicrophoneStatus(`Escuchando: «${event.text}»`);
+      } else if (event.type === 'ready') {
+        voiceRecognitionActive = true;
+        activeMicrophoneLabel = event.label || activeMicrophoneName();
+        setMicrophoneStatus(`Escuchando por: ${activeMicrophoneLabel} (${event.sampleRate} Hz)`);
+      } else if (event.type === 'result') {
+        const phrase = normalizeVoiceText(event.text);
+        if (dispositionPhrases.includes(phrase)) void classifyCallByVoice(phrase);
+      } else if (event.type === 'error') {
+        autoMessage = event.message || 'Falló el reconocimiento local de voz.';
+        autoCallsEnabled = false;
+        callLoopPaused = true;
+        clearTimeout(autoCallTimer);
+        stopSpeechRecognition();
+        setMicrophoneStatus(autoMessage, true);
+        setCallState(callState);
+      }
+    });
+    const savedPauseHotkey = localStorage.getItem('callPauseHotkey');
+    if ([...pauseHotkeySelect.options].some((option) => option.value === savedPauseHotkey)) {
+      pauseHotkeySelect.value = savedPauseHotkey;
+      window.api.setCallPauseHotkey(savedPauseHotkey);
+    }
+    navigator.mediaDevices.addEventListener('devicechange', loadMicrophones);
+    
+    function updateStatus() {
+      const dot = document.getElementById('statusDot');
+      const label = document.getElementById('statusLabel');
+      const value = document.getElementById('statusValue');
+      
+      dot.className = 'status-dot';
+      if (currentError) {
+        label.textContent = 'Error';
+        value.textContent = currentError;
+      } else if (isRecording) {
+        dot.classList.add('recording');
+        label.textContent = 'Grabando...';
+        value.textContent = `${displayedEventCount} eventos capturados`;
+      } else if (isPlaying) {
+        dot.classList.add('playing');
+        label.textContent = 'Reproduciendo...';
+        value.textContent = `Repetición ${playbackCurrent} de ${playbackTotal}`;
+      } else if (callState === 'CALLING') {
+        dot.classList.add('playing');
+        label.textContent = callLoopPaused ? 'Llamada en curso — ciclo pausado' : 'Llamada en curso';
+        value.textContent = 'Escuchando frase exacta; no se iniciará otra llamada';
+      } else if (callState === 'DISPOSITION') {
+        dot.classList.add('playing');
+        label.textContent = callLoopPaused ? 'Clasificación — ciclo pausado' : 'Clasificando llamada...';
+        value.textContent = 'La siguiente llamada esperará 2 segundos';
+      } else {
+        label.textContent = 'Listo';
+        value.textContent = 'F5: Grabar • F6: Parar Rec • F7: Reproducir • F8: Parar Play';
+      }
+    }
+    
+    function updateEventCount(count) {
+      document.getElementById('eventCount').textContent = count;
+    }
+    
+    function updateHotkeys() {
+      const callFlowBusy = autoCallsEnabled || isSelectingCallLocation || callState !== 'IDLE';
+      document.getElementById('hkRecord').classList.toggle('active', isRecording);
+      document.getElementById('hkStop').classList.toggle('active', isRecording);
+      document.getElementById('hkPlay').classList.toggle('playing', isPlaying);
+      document.getElementById('hkStopPlay').classList.toggle('active', isPlaying);
+
+      document.getElementById('hkRecord').disabled = isRecording || isPlaying || callFlowBusy;
+      document.getElementById('hkStop').disabled = !isRecording;
+      document.getElementById('hkPlay').disabled = isRecording || isPlaying || callFlowBusy || currentEvents.length === 0;
+      document.getElementById('hkStopPlay').disabled = !isPlaying;
+      document.getElementById('btnPlay').disabled = isRecording || isPlaying || callFlowBusy || currentEvents.length === 0;
+      document.getElementById('btnClear').disabled = isRecording || isPlaying || callFlowBusy || currentEvents.length === 0;
+      document.getElementById('btnSave').disabled = isRecording || isPlaying || callFlowBusy || currentEvents.length === 0;
+      document.getElementById('btnLoad').disabled = isRecording || isPlaying || callFlowBusy;
+      document.getElementById('btnMarkLocation').disabled =
+        autoCallsEnabled || isSelectingCallLocation || isRecording || isPlaying;
+      document.getElementById('btnStartAuto').disabled =
+        autoCallsEnabled || isSelectingCallLocation || isRestartingCallLoop || isRecording || isPlaying || !callLocation;
+      document.getElementById('btnPauseAuto').disabled = !autoCallsEnabled || callLoopPaused;
+      document.getElementById('btnResumeAuto').disabled = !callLoopPaused || !callLocation;
+      document.getElementById('btnRestartAuto').disabled =
+        !callLocation || isSelectingCallLocation || isRecording || isPlaying || isRestartingCallLoop;
+      document.getElementById('btnStopAuto').disabled =
+        !autoCallsEnabled && callState === 'IDLE';
+      pauseHotkeySelect.disabled = autoCallsEnabled || callState !== 'IDLE' || isRestartingCallLoop;
+      microphoneSelect.disabled = autoCallsEnabled || callState !== 'IDLE' || isRestartingCallLoop;
+      document.getElementById('btnRefreshMics').disabled =
+        autoCallsEnabled || callState !== 'IDLE' || isRestartingCallLoop;
+      document.getElementById('btnTestMic').disabled =
+        autoCallsEnabled || callState !== 'IDLE' || isRestartingCallLoop;
+    }
+    
+    function updatePlaybackProgress(current, total) {
+      const bar = document.querySelector('.playback-bar');
+      if (bar && total > 0) {
+        bar.style.width = `${(current / total) * 100}%`;
+      } else if (bar) {
+        bar.style.width = '0%';
+      }
+    }
+    
+    function renderEvents() {
+      const container = document.getElementById('eventsList');
+      
+      if (currentEvents.length === 0) {
+        container.innerHTML = '<div class="empty-state">No hay eventos grabados. Presiona F5 para empezar.</div>';
+        return;
+      }
+      
+      const items = currentEvents.slice(-200).map((e) => {
+        const typeClass = e.type === 'click' || e.type.startsWith('mouse') ? 'click' : 'move';
+        const typeLabel = e.type === 'click' ? 'CLK'
+          : e.type === 'mousedown' ? 'DOWN'
+            : e.type === 'mouseup' ? 'UP'
+              : e.type === 'wheel' ? 'RDA'
+                : e.type.startsWith('key') ? 'KEY' : 'MOV';
+        const details = e.type === 'click'
+          ? `Click ${e.button} en (${e.x}, ${e.y})`
+          : e.type === 'mousedown' || e.type === 'mouseup'
+            ? `${e.button} ${e.type === 'mousedown' ? 'presionado' : 'soltado'} en (${e.x}, ${e.y})`
+            : e.type === 'wheel'
+              ? `Rueda en (${e.x}, ${e.y})`
+              : e.type.startsWith('key')
+                ? `${e.type === 'keydown' ? 'Tecla' : 'Soltar tecla'} ${e.keycode ?? e.key}`
+                : `Mover a (${e.x}, ${e.y})`;
+        const time = `${(e.time / 1000).toFixed(2)}s`;
+
+        const item = document.createElement('div');
+        item.className = 'event-item';
+        const type = document.createElement('div');
+        type.className = `event-type ${typeClass}`;
+        type.textContent = typeLabel;
+        const eventDetails = document.createElement('div');
+        eventDetails.className = 'event-details';
+        eventDetails.textContent = details;
+        const eventTime = document.createElement('div');
+        eventTime.className = 'event-time';
+        eventTime.textContent = time;
+        item.append(type, eventDetails, eventTime);
+        return item;
+      });
+      container.replaceChildren(...items);
+    }
+    
+    function playMacro() {
+      const count = Number.parseInt(repeatCountInput.value, 10) || 1;
+      window.api.startPlayback(count);
+    }
+
+    function startRecording() {
+      window.api.startRecording();
+    }
+
+    function stopRecording() {
+      window.api.stopRecording();
+    }
+
+    function stopPlayback() {
+      window.api.stopPlayback();
+    }
+    
+    function clearMacro() {
+      window.api.clearMacro();
+    }
+    
+    function saveMacro() {
+      window.api.saveMacro();
+    }
+    
+    function loadMacro() {
+      window.api.loadMacro();
+    }
+    
+    repeatCountInput.addEventListener('input', syncRepeatCount);
+    repeatCountInput.addEventListener('change', (e) => {
+      let val = parseInt(e.target.value);
+      if (isNaN(val) || val < 1) val = 1;
+      if (val > 9999) val = 9999;
+      e.target.value = val;
+      syncRepeatCount();
+    });
+
+    createVoicePhraseList();
+    updateCallLocationStatus();
+    void loadMicrophones();
+    syncRepeatCount();
+    setCallState('IDLE');
+    updateHotkeys();
+  </script>
+</body>
+</html>

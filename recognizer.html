@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reconocimiento de voz</title>
+  </head>
+  <body>
+    <script>
+      let stream = null;
+      let audioContext = null;
+      let source = null;
+      let processor = null;
+      let mute = null;
+      let isStarting = false;
+      let workerReady = false;
+      let microphoneLabel = '';
+
+      function report(type, details = {}) {
+        window.api.sendVoiceRecognitionEvent({ type, ...details });
+      }
+
+      function reportReady() {
+        if (!workerReady || !audioContext || audioContext.state !== 'running') return;
+        report('ready', { label: microphoneLabel, sampleRate: audioContext.sampleRate });
+      }
+
+      function stopRecognition() {
+        if (processor) processor.onaudioprocess = null;
+        processor?.disconnect();
+        source?.disconnect();
+        mute?.disconnect();
+        stream?.getTracks().forEach((track) => track.stop());
+        if (audioContext) void audioContext.close();
+        processor = null;
+        source = null;
+        mute = null;
+        stream = null;
+        audioContext = null;
+        workerReady = false;
+      }
+
+      function fail(error) {
+        report('error', { message: error?.message || String(error) });
+        stopRecognition();
+      }
+
+      async function startRecognition(deviceId) {
+        if (isStarting) return;
+        isStarting = true;
+        report('status', { message: 'Abriendo micrófono seleccionado.' });
+
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              deviceId: { exact: deviceId },
+              channelCount: { ideal: 1 },
+              sampleRate: { ideal: 16000 }
+            }
+          });
+          const track = stream.getAudioTracks()[0];
+          if (!track) throw new Error('El headset no proporcionó una pista de audio.');
+          track.addEventListener('ended', () => {
+            fail(new Error(`Se desconectó el micrófono "${track.label}".`));
+          }, { once: true });
+          microphoneLabel = track.label;
+          report('status', { message: `Micrófono abierto: ${microphoneLabel}.` });
+
+          audioContext = new AudioContext({ sampleRate: 16000 });
+          if (audioContext.sampleRate !== 16000) {
+            throw new Error(`El motor local requiere 16000 Hz; el headset entregó ${audioContext.sampleRate} Hz.`);
+          }
+          report('status', { message: `AudioContext ${audioContext.state}, ${audioContext.sampleRate} Hz.` });
+
+          source = audioContext.createMediaStreamSource(stream);
+          processor = audioContext.createScriptProcessor(4096, 1, 1);
+          mute = audioContext.createGain();
+          mute.gain.value = 0;
+          processor.onaudioprocess = (event) => {
+            if (!workerReady) return;
+            const input = event.inputBuffer.getChannelData(0);
+            const samples = new Int16Array(input.length);
+            for (let index = 0; index < input.length; index += 1) {
+              const sample = Math.max(-1, Math.min(1, input[index]));
+              samples[index] = sample < 0 ? sample * 32768 : sample * 32767;
+            }
+            window.api.sendVoiceAudioChunk(samples);
+          };
+          source.connect(processor);
+          processor.connect(mute);
+          mute.connect(audioContext.destination);
+          if (audioContext.state === 'suspended') await audioContext.resume();
+          reportReady();
+        } catch (error) {
+          fail(error);
+        } finally {
+          isStarting = false;
+        }
+      }
+
+      window.api.onVoiceRecognitionStart((deviceId) => {
+        void startRecognition(deviceId);
+      });
+
+      window.api.onVoiceRecognitionWorkerEvent((event) => {
+        if (event.type === 'ready') {
+          workerReady = true;
+          report('status', { message: 'Motor nativo local listo; iniciando escucha.' });
+          reportReady();
+        } else if (event.type === 'partial' || event.type === 'result') {
+          report(event.type, { text: event.text });
+        } else if (event.type === 'error') {
+          fail(new Error(event.message || 'Falló el proceso local de voz.'));
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,50 @@
+{
+  "name": "macro",
+  "version": "1.0.0",
+  "description": "Macro recorder/player for Windows",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron main.js",
+    "build": "electron-builder --win --x64",
+    "dist": "electron-builder --win --x64 --publish never"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.0.0",
+    "tar": "^6.2.1",
+    "uiohook-napi": "^1.5.5",
+    "vosk": "^0.3.39"
+  },
+  "build": {
+    "appId": "com.macro.app",
+    "productName": "Macro Panel",
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "asarUnpack": [
+      "node_modules/@nut-tree-fork/nut-js/**/*",
+      "node_modules/uiohook-napi/**/*",
+      "node_modules/ffi-napi/**/*",
+      "node_modules/ref-napi/**/*",
+      "node_modules/vosk/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/speech-model.tar.gz",
+        "to": "speech-model.tar.gz"
+      }
+    ]
+  }
+}
